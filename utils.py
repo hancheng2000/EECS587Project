@@ -7,7 +7,7 @@ from numba.core import types
 import os
 import pandas as pd
 import copy
-#first the dtypes of the input matrices need to be explicitly clearify
+#first the dtypes of the input matrices need to be explicitly clarified
 class SpatialDomainData:
     #This class creates objects for storing position, velocity and acceleration information
     ##This class contain three functions:

@@ -8,4 +8,4 @@ import os
 import pandas as pd
 import copy
 
-def
+def cell_to_dict_spatial
