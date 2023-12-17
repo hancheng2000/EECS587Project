@@ -12,23 +12,23 @@ import math
 def cell_to_dict_spatial(info,nx,ny,nz,L):
     ##This is the helper function to create dictionary containing matrix for cell_to_obj
     #Inpust: info -- the position + velocity + acceleration of the patricles at the
-    cell_lists = Dict.empty(key_type=types.int64, value_type=float_array)
+    cell_dict = Dict.empty(key_type=types.int64, value_type=float_array)
     xinterval=L/nx
     yinterval=L/ny
     zinterval=L/nz
     #cell_lists={}
     for i in range(1,nx*ny*nz+1): 
-      cell_lists[i]= np.zeros((1,9))
+      cell_dict[i]= np.zeros((1,9))
     for i in range(info.shape[0]):
       atom=info[i,0:9].reshape(1,9)
       #check extra one!!!
       #if statements !!!!!!!
       #check later
       atomID=int(((np.floor(atom[:,0]/xinterval)+1+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
-      cell_lists[atomID]=np.append(cell_lists[atomID],atom,axis=0)
+      cell_dict[atomID]=np.append(cell_dict[atomID],atom,axis=0)
     for i in range(1,nx*ny*nz+1):
-       cell_lists[i]=cell_lists[i][1:,:]
-    return cell_lists
+       cell_dict[i]=cell_dict[i][1:,:]
+    return cell_dict
 
 def cell_to_obj_spatial(positions,nx,ny,nz,L):
     cell_lists=cell_to_dict_spatial(positions,nx,ny,nz,L)
