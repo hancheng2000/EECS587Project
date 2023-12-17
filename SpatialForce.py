@@ -54,24 +54,26 @@ def cell_to_obj_spatial(positions,nx,ny,nz,L):
 
 def separate_points_spatial(infodict, my_rank, world):
     neighbor_spd = None
+    # Processor matrix n*n*1 (for comparison with force decomposition)
+    axis = np.sqrt(world)
     # Here we need to be careful about only copying the neighboring subcube
-    x,y,z = my_rank / world, my_rank % world, my_rank / world / world
+    x,y,z = my_rank / axis, my_rank % axis, 0
     x,y,z = int(np.floor(x)), int(np.floor(y)), int(np.floor(z))
-    x_mesh,y_mesh,z_mesh = np.meshgrid(np.linspace(x-1,x+1,3),np.linspace(y-1,y+1,3),np.linspace(z-1,z+1,3))
-    neighbor_xyz = np.column_stack((x_mesh.ravel(),y_mesh.ravel(),z_mesh.ravel()))
+    x_mesh,y_mesh = np.meshgrid(np.linspace(x-1,x+1,3),np.linspace(y-1,y+1,3))
+    neighbor_xy = np.column_stack((x_mesh.ravel(),y_mesh.ravel()))
     # neighbor_rank = np.array([[i-5,i-4,i-3],[i-1,i,i+1],[i+3,i+4,i+5]])
     # for row in neighbor_rank:
     #     for col in row:
     #         if np.floor(col / world) != np.floor(row[1] / world):
     #             col = np.floor(col / world) * world + world
-    neighbor_rank = np.zeros(27)
-    for t,xyz in enumerate(neighb_xyz):
-        for i in xyz:
+    neighbor_rank = np.zeros(9)
+    for t,xyz in enumerate(neighb_xy):
+        for i in xy:
             if i<0:
                 i = i + world
             elif i == world:
                 i = i - world
-        neighbor_rank[t] = (xyz[0] + xyz[1]*world) + xyz[2]*world*world
+        neighbor_rank[t] = (xy[0] + xy[1]*axis)
 
     # copy the info in neighboring ranks
     for i, spd in infodict.items():
