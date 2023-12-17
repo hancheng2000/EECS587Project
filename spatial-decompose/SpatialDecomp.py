@@ -31,7 +31,7 @@ def cell_to_dict_spatial(info,nx,ny,nz,L):
     return cell_lists
 
 def cell_to_obj_spatial(positions,nx,ny,nz,L):
-    cell_lists=cell_to_dict(positions,nx,ny,nz,L)
+    cell_lists=cell_to_dict_spatial(positions,nx,ny,nz,L)
     new_cell_list={}
     for i in range(1,nx*ny*nz+1):
       # I think this works but we should think more about what an "empty" shape means
