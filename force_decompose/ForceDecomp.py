@@ -51,11 +51,10 @@ def cell_to_obj_force(positions,nx,ny,nz,L):
                                           np.empty((0,3)))
     return new_cell_list
 
-def separate_points(info):
-    comm = MPI.COMM_WORLD
+def separate_atoms_init(info, comm):
     rank = comm.Get_rank()    
     # Processor matrix p*p*1
-    p = np.sqrt(world)
+    p = np.sqrt(comm.world)
     x = math.floor(rank / p)
     y = math.floor(rank % p)
     natoms = len(info)
@@ -83,43 +82,78 @@ def separate_points(info):
               comm.send(info[math.floor((atoms_to_send_y_range[0]+atoms_to_send_y_range[1])/2):atoms_to_send_y_range[1],:],dest=i_rank,tag=1)
             else:
               comm.send(info[atoms_to_send_y_range[0]:atoms_to_send_y_range[1],:],dest=i_rank,tag=1)
+      return atoms_x, atoms_y
     else:
       atoms_x = comm.recv(source=0,tag=0)
       atoms_y = comm.recv(source=0,tag=1)
       atoms = np.concatenate((atoms_x, atoms_y),0)
-    
+      return atoms_x, atoms_y
+    # return atoms_x, atoms_y, atoms
+
+def gather_force(atoms_x, atoms_y, force, comm,nx_per_processor,ny_per_processor,my_rank=None):
+  # Gather all the points into sqrt(comm.world) processors for position update
+  p = int(np.sqrt(comm.world))
+  x = math.floor(rank / p)
+  y = math.floor(rank % p)
+  # send the force to transposed matrix for gathering force
+  if y>x:
+    dest_rank = y * p + x
+    comm.send(force,dest=dest_rank, tag=2)
+  elif y<x:
+    source_rank = y * p + x
+    force_other = comm.recv(source = source_rank, tag=2)
+    force = np.vstack((force,force_other))
+  elif y==x:
+    assert force.shape[0] == force.shape[1]
+  comm.barrier()
+
+  # send the updated force matrix back to the transposed matrix and apply Newton third law
+  if y<x:
+    force_send = np.transpose(force) #Newton third law
+    dest_rank = y * p + x
+    comm.send(force_send, dest = dest_rank, tag = 3)
+  elif y>x:
+    source_rank = y * p + x
+    force_new = comm.recv(source = source_rank, tag = 3)
+    force = force_new
+  elif y==x:
+    assert force.shape[0] == force.shape[1]
+  comm.barrier()
+  # gather the forces to the first processor in each row
+  if y==0:
+    subset_ranks = x * p + np.arange(0,p,1)
+    subset_comm_group = comm.Create_group(subset_ranks)
+    subset_comm = comm.Create(subset_comm_group)
+    force_all = np.zeros((force.shape[0],force.shape[1]))
+    assert force_all.shape[0] == force_all.shape[1]
+    subset_comm.reduce(force,force_all,op=MPI.SUM, root=0)
+    # sum up the force to be in the shape (natoms_per_processor, 1)
+    final_force = np.sum(force_all,axis=1)
+    return final_force
+  else:
     return None
 
-def gather_points(info,my_rank=None):
-
-  pass
-
 #@numba.njit()
-def LJ_force(position,neighb_x_0,r_cut,L):
-    subcube_atoms=position.shape[0]
-    #careful kind of confusing
-    position=np.concatenate((position,neighb_x_0),0)
-    num=position.shape[0]
-    update_accel=np.zeros((subcube_atoms,3))
-    dU_drcut=48*r_cut**(-13)-24*r_cut**(-7) 
-    #for loop is only of subcube we are interested in but we have to account for ALL distance!
-    for atom in range(subcube_atoms):
-        position_other=np.concatenate((position[0:atom,:],position[atom+1:num+1,:]),axis=0)
-        position_atom=position[atom]
-        separation=position_atom-position_other   
-        separation_new=pbc2(separation=separation,L=L)
-        r_relat=np.sqrt(np.sum(separation_new**2,axis=1))
-        #get out the particles inside the r_cut
-        accel=np.zeros((r_relat.shape[0],3))
-        for i, r0 in enumerate(r_relat):
-            if r0 <= r_cut:
-               separation_active_num=separation_new[i,:]
-               vector_part=separation_active_num*(1/r0)
-               scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
-               accel_num=vector_part*scalar_part
-               accel[i,:]=accel_num
-        update_accel[atom,:]=np.sum(accel,axis=0)
-    return update_accel.reshape(subcube_atoms,3)
+def LJ_force(atoms_x, atoms_y,r_cut,L):
+  # calculate forces in force decomp
+  # For instance, if a processor gets atoms_x=[4,5,6,7], atoms_y=[0,1]
+  # then the output force matrix should be 4*2
+  # with force[0,1] being f(5,0)
+  positions_x = atoms_x[:,0:3]
+  positions_y = atoms_y[:,0:3]
+  dU_drcut=48*r_cut**(-13)-24*r_cut**(-7)
+  force = np.zeros((len(position_x),len(position_y)))
+  for i,px in enumerate(positions_x):
+    for j,py in enumerate(positions_y):
+      separation = pbc2(separation=px-py,L=L)
+      r_relat=np.sqrt(np.sum(separation**2),axis=1)
+      #get out the particles inside the r_cut
+      if r_relat <= r_cut and r_relat!=0:
+        vector_part=separation*(1/r_relat)
+        scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
+        fc=vector_part*scalar_part
+        force[i,j] = fc
+  return force
 
 @numba.njit
 def LJ_potent_nondimen(position,r_cut,L):
