@@ -62,7 +62,7 @@ def LJ_MD(subdiv,position_init,dt,stop_step,accel_init,r_cut,L,T_eq,e_scale,sig)
         atoms = np.concatenate((atoms_x, atoms_y),0)
     comm.barrier()
 
-    # TODO:MD simulation (yet to be changed)
+    # TODO:MD simulation 
     for step in range(stop_step):
         if rank!=0:
           #call the vel_verlet parallel function
