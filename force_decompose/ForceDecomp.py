@@ -134,7 +134,7 @@ def gather_force(atoms_x, atoms_y, force, comm,nx_per_processor,ny_per_processor
     return None
 
 #@numba.njit()
-def LJ_force(atoms_x, atoms_y,r_cut,L):
+def LJ_energy_force(atoms_x, atoms_y,r_cut,L):
   # calculate forces in force decomp
   # For instance, if a processor gets atoms_x=[4,5,6,7], atoms_y=[0,1]
   # then the output force matrix should be 4*2
@@ -142,7 +142,10 @@ def LJ_force(atoms_x, atoms_y,r_cut,L):
   positions_x = atoms_x[:,0:3]
   positions_y = atoms_y[:,0:3]
   dU_drcut=48*r_cut**(-13)-24*r_cut**(-7)
+  dU_drcut_e=24*r_cut**(-7)-48*r_cut**(-13)
+  U_rcut_e=4*(r_cut**(-12)-r_cut**(-6))
   force = np.zeros((len(position_x),len(position_y)))
+  energy = 0
   for i,px in enumerate(positions_x):
     for j,py in enumerate(positions_y):
       separation = pbc2(separation=px-py,L=L)
@@ -153,32 +156,47 @@ def LJ_force(atoms_x, atoms_y,r_cut,L):
         scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
         fc=vector_part*scalar_part
         force[i,j] = fc
-  return force
+        # potential energy
+        LJ_num=4*r0**(-12)-4*r0**(-6)-U_rcut-(r0-r_cut)*dU_drcut_e
+        energy += LJ_num
+  return force, energy
 
-@numba.njit
-def LJ_potent_nondimen(position,r_cut,L):
-    ##This function compute the nondimensional potential energy of the system at the given position
-    #Input: position -- the position of all the particles in the sub-system at this instance
-    #       r_cut -- the cutoff for the short-range force field
-    #       L --  the size of the simulation cell
-    #Output: np.sum(update_LJ) -- the potential energy of the sub-system at this instance
-    num=position.shape[0]
-    update_LJ=np.zeros((num-1,1))
-    #fix value for a certain r_limit
-    dU_drcut=24*r_cut**(-7)-48*r_cut**(-13)
-    U_rcut=4*(r_cut**(-12)-r_cut**(-6))
-    for atom in range(num-1):
-        position_relevent=position[atom:,:]
-        position_other=position_relevent[1:,:]
-        #pbc rule2
-        separation=position_relevent[0,:]-position_other
-        separation_new=pbc2(separation=separation,L=L)
-        r_relat=np.sqrt(np.sum(separation_new**2,axis=1)).reshape(separation_new.shape[0],)
-        LJ=[]
-        #get out the particles inside the r_limit
-        for r0 in r_relat:
-            if r0 <= r_cut:
-               LJ_num=4*r0**(-12)-4*r0**(-6)-U_rcut-(r0-r_cut)*dU_drcut
-               LJ.append(LJ_num)
-            update_LJ[atom,:]=np.sum(np.array(LJ),axis=0)    
-    return np.sum(update_LJ)    
+# @numba.njit
+# def LJ_potent_nondimen(atoms_x, atoms_y,r_cut,L):
+#     ##This function compute the nondimensional potential energy of the system at the given position
+#     #Input: position -- the position of all the particles in the sub-system at this instance
+#     #       r_cut -- the cutoff for the short-range force field
+#     #       L --  the size of the simulation cell
+#     #Output: np.sum(update_LJ) -- the potential energy of the sub-system at this instance
+#   positions_x = atoms_x[:,0:3]
+#   positions_y = atoms_y[:,0:3]
+#   num=position.shape[0]
+#   update_LJ=np.zeros((num-1,1))
+#   #fix value for a certain r_limit
+#   dU_drcut=24*r_cut**(-7)-48*r_cut**(-13)
+#   U_rcut=4*(r_cut**(-12)-r_cut**(-6))
+#   for i,px in enumerate(positions_x):
+#     for j, py in enumerate(positions_y):
+#       separation = pbc2(separation=px-py,L=L)
+#       r_relat=np.sqrt(np.sum(separation**2),axis=1)
+#       #get out the particles inside the r_cut
+#       if r_relat <= r_cut and r_relat!=0:
+#         vector_part=separation*(1/r_relat)
+#         scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
+#         fc=vector_part*scalar_part
+#         force[i,j] = fc        
+#     for atom in range(num-1):
+#         position_relevent=position[atom:,:]
+#         position_other=position_relevent[1:,:]
+#         #pbc rule2
+#         separation=position_relevent[0,:]-position_other
+#         separation_new=pbc2(separation=separation,L=L)
+#         r_relat=np.sqrt(np.sum(separation_new**2,axis=1)).reshape(separation_new.shape[0],)
+#         LJ=[]
+#         #get out the particles inside the r_limit
+#         for r0 in r_relat:
+#             if r0 <= r_cut:
+#                LJ_num=4*r0**(-12)-4*r0**(-6)-U_rcut-(r0-r_cut)*dU_drcut
+#                LJ.append(LJ_num)
+#             update_LJ[atom,:]=np.sum(np.array(LJ),axis=0)    
+#     return np.sum(update_LJ)    
