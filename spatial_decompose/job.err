@@ -1,0 +1,45 @@
+
+CommandNotFoundError: Your shell has not been properly configured to use 'conda activate'.
+To initialize your shell, run
+
+    $ conda init <SHELL_NAME>
+
+Currently supported shells are:
+  - bash
+  - fish
+  - tcsh
+  - xonsh
+  - zsh
+  - powershell
+
+See 'conda init --help' for more information and options.
+
+IMPORTANT: You may need to close and restart your shell after running 'conda init'.
+
+
+srun: error: spank: x11.so: Plugin file not found
+Traceback (most recent call last):
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/MDargon_spatial.py", line 33, in <module>
+    info,PE,KE,T_insta,P_insta=LJ_MD(subdiv=subdiv,
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/LJ_SpatialDecomp.py", line 41, in LJ_MD
+    info[step+1,:,:]=np.concatenate((tmp.P,tmp.V,tmp.A),1)
+AttributeError: 'NoneType' object has no attribute 'P'
+Traceback (most recent call last):
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/MDargon_spatial.py", line 33, in <module>
+    info,PE,KE,T_insta,P_insta=LJ_MD(subdiv=subdiv,
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/LJ_SpatialDecomp.py", line 41, in LJ_MD
+    info[step+1,:,:]=np.concatenate((tmp.P,tmp.V,tmp.A),1)
+AttributeError: 'NoneType' object has no attribute 'P'
+Traceback (most recent call last):
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/MDargon_spatial.py", line 33, in <module>
+    info,PE,KE,T_insta,P_insta=LJ_MD(subdiv=subdiv,
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/LJ_SpatialDecomp.py", line 41, in LJ_MD
+    info[step+1,:,:]=np.concatenate((tmp.P,tmp.V,tmp.A),1)
+AttributeError: 'NoneType' object has no attribute 'P'
+Traceback (most recent call last):
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/MDargon_spatial.py", line 33, in <module>
+    info,PE,KE,T_insta,P_insta=LJ_MD(subdiv=subdiv,
+  File "/home/hanchen2/ParallelComputing/EECS587Project/spatial_decompose/LJ_SpatialDecomp.py", line 41, in LJ_MD
+    info[step+1,:,:]=np.concatenate((tmp.P,tmp.V,tmp.A),1)
+AttributeError: 'NoneType' object has no attribute 'P'
+srun: error: e003: tasks 0-3: Exited with exit code 1
