@@ -185,23 +185,23 @@ def cell_to_dict(info,nx,ny,nz,L):
     yinterval=L/ny
     zinterval=L/nz
     #cell_lists={}
-    for i in range(1,nx*ny*nz+1): 
+    for i in range(nx*ny*nz): 
       cell_dict[i]= np.zeros((1,9))
     for i in range(info.shape[0]):
       atom=info[i,0:9].reshape(1,9)
       #check extra one!!!
       #if statements !!!!!!!
       #check later
-      atomID=int(((np.floor(atom[:,0]/xinterval)+1+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
+      atomID=int(((np.floor(atom[:,0]/xinterval)+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
       cell_dict[atomID]=np.append(cell_dict[atomID],atom,axis=0)
-    for i in range(1,nx*ny*nz+1):
+    for i in range(nx*ny*nz):
        cell_dict[i]=cell_dict[i][1:,:]
     return cell_dict
 
 def cell_to_obj(positions,nx,ny,nz,L):
     cell_lists=cell_to_dict(positions,nx,ny,nz,L)
     new_cell_list={}
-    for i in range(1,nx*ny*nz+1):
+    for i in range(nx*ny*nz):
       # I think this works but we should think more about what an "empty" shape means
       # currently when a key points to an empty cube the cube has a position vector of dimensions [0,3]
       if cell_lists[i].shape[0]!=0:
@@ -222,7 +222,7 @@ def cell_to_obj(positions,nx,ny,nz,L):
 
 #@numba.njit()
 def separate_points(infodict, my_rank, nproc):
-    neighbor_spd = None
+    neighb_spd = None
     # Processor matrix n*n*1 (for comparison with force decomposition)
     axis = np.sqrt(nproc)
     # Here we need to be careful about only copying the neighboring subcube
@@ -246,6 +246,7 @@ def separate_points(infodict, my_rank, nproc):
                 elif i == axis:
                     i = i - axis
             neighbor_rank[t] = (xy[0] + xy[1]*axis)
+    # print('neighboring ',my_rank, neighbor_rank)
 
     # copy the info in neighboring ranks
     for i, spd in infodict.items():
@@ -297,80 +298,48 @@ def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,perio
     iterations=str(iterations_int)
     if make_directory == True:
         os.mkdir('results')
-        # path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
-        path_to_file_xyz = "results/"+name+"iter"+iterations+'.txt'
-        path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+".csv"
-        path_to_file_summary = "results/"+name+"_summary"+".txt"
-        p= open(path_to_file_xyz,"w")
-        s= open(path_to_file_summary,'w')
+    # path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
+    path_to_file_xyz = "results/"+name+"iter"+iterations+'.txt'
+    path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+".csv"
+    path_to_file_summary = "results/"+name+"_summary"+".txt"
+    p= open(path_to_file_xyz,"w")
+    s= open(path_to_file_summary,'w')
 
-        # #writing xyz file
-        # comment = 'This is the position of the system during the last '+iterations+' steps'
-        # # for atoms in info[-int(iterations):,:,:]:
-        #     p.write("%s\n" % str(num_atoms))
-        #     p.write("%s\n" % comment)
-        #     for atom in atoms:
-        #         # p.write(part_type)
-        #         p.write("\t%s\n" % str(atom)[1:-2])
+    # #writing xyz file
+    # comment = 'This is the position of the system during the last '+iterations+' steps'
+    # # for atoms in info[-int(iterations):,:,:]:
+    #     p.write("%s\n" % str(num_atoms))
+    #     p.write("%s\n" % comment)
+    #     for atom in atoms:
+    #         # p.write(part_type)
+    #         p.write("\t%s\n" % str(atom)[1:-2])
 
-        #writing xyz file
-        comment = 'This is the position of the system of the final step'
-        # for atoms in info[-int(iterations):,:,:]:
-        # p.write("%s\n" % str(num_atoms))
-        # p.write("%s\n" % comment)
-        # for i in range(num_atoms):
-        #     p.write("\t%s\n" % str(info[:]))        
-        np.savetxt(path_to_file_xyz,info[-1,:,:])
+    #writing xyz file
+    comment = 'This is the position of the system of the final step'
+    print(path_to_file_xyz)
+    # for atoms in info[-int(iterations):,:,:]:
+    # p.write("%s\n" % str(num_atoms))
+    # p.write("%s\n" % comment)
+    # for i in range(num_atoms):
+    #     p.write("\t%s\n" % str(info[:]))        
+    np.savetxt(path_to_file_xyz,info[-1,:,:],fmt='%.6f')
 
-        #writing other file
-        other_dict={}
-        other_dict['KE']=KE.reshape(KE.shape[0],)
-        other_dict['PE']=PE.reshape(PE.shape[0],)
-        other_dict['T_insta']=T_insta.reshape(T_insta.shape[0],)
-        other_dict['P_insta']=P_insta.reshape(P_insta.shape[0],)
-        other_df=pd.DataFrame.from_dict(other_dict)
-        other_df.to_csv(path_to_file_other,index_label='step')
+    #writing other file
+    other_dict={}
+    other_dict['KE']=KE.reshape(KE.shape[0],)
+    other_dict['PE']=PE.reshape(PE.shape[0],)
+    other_dict['T_insta']=T_insta.reshape(T_insta.shape[0],)
+    other_dict['P_insta']=P_insta.reshape(P_insta.shape[0],)
+    other_df=pd.DataFrame.from_dict(other_dict)
+    other_df.to_csv(path_to_file_other,index_label='step')
 
-        #writing summary file
-        s.write("Simulation Cell Size(unitless): "+str(L)+"\n")
-        s.write("Simulation Particles Amount: "+str(num_atoms)+"\n")
-        s.write("File Name: "+str(name)+"\n")
-        s.write("Simulation Time: "+ str(period)+"\n")
-        s.write("Simulation Step: "+str(stop_step)+"\n")
-        s.write("Force Cut-off: "+str(r_c)+"\n")
-        p.close()
-        s.close()
-    else:
-        path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
-        path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+".csv"
-        path_to_file_summary = "results/"+name+"_summary"+".txt"
-        p= open(path_to_file_xyz,"w")
-        s= open(path_to_file_summary,'w')
+    #writing summary file
+    s.write("Simulation Cell Size(unitless): "+str(L)+"\n")
+    s.write("Simulation Particles Amount: "+str(num_atoms)+"\n")
+    s.write("File Name: "+str(name)+"\n")
+    s.write("Simulation Time: "+ str(period)+"\n")
+    s.write("Simulation Step: "+str(stop_step)+"\n")
+    s.write("Force Cut-off: "+str(r_c)+"\n")
+    p.close()
+    s.close()
 
-        #writing xyz file
-        comment = 'This is the position of the system during the last '+iterations+' steps'
-        for atoms in info[-int(iterations):,:,0:3]:
-            p.write("%s\n" % str(num_atoms))
-            p.write("%s\n" % comment)
-            for atom in atoms:
-                p.write(part_type)
-                p.write("\t%s\n" % str(atom)[1:-2])
-
-        #writing other file
-        other_dict={}
-        other_dict['KE']=KE.reshape(KE.shape[0],)
-        other_dict['PE']=PE.reshape(PE.shape[0],)
-        other_dict['T_insta']=T_insta.reshape(T_insta.shape[0],)
-        other_dict['P_insta']=P_insta.reshape(P_insta.shape[0],)
-        other_df=pd.DataFrame.from_dict(other_dict)
-        other_df.to_csv(path_to_file_other,index_label='step')
-
-        #writing summary file
-        s.write("Simulation Cell Size(unitless): "+str(L)+"\n")
-        s.write("Simulation Particles Amount: "+str(num_atoms)+"\n")
-        s.write("File Name: "+str(name)+"\n")
-        s.write("Simulation Time: "+ str(period)+"\n")
-        s.write("Simulation Step: "+str(stop_step)+"\n")
-        s.write("Force Cut-off: "+str(r_c)+"\n")
-        p.close()
-        s.close()
