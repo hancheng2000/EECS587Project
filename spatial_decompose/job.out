@@ -1,12 +1,18 @@
-0 1
-0 1
+/opt/packages/openmpi/gcc/4.1.1-gcc8.3.1-cpu/bin/mpiexec
+/opt/packages/openmpi/gcc/4.1.1-gcc8.3.1-cpu/bin/mpirun
+MPI startup(): PMI server not found. Please set I_MPI_PMI_LIBRARY variable if it is not a singleton case.
+MPI startup(): PMI server not found. Please set I_MPI_PMI_LIBRARY variable if it is not a singleton case.
+MPI startup(): PMI server not found. Please set I_MPI_PMI_LIBRARY variable if it is not a singleton case.
+MPI startup(): PMI server not found. Please set I_MPI_PMI_LIBRARY variable if it is not a singleton case.
+initial rank 0
+0 1704156354.2576318
+initial rank 0
+initial rank 0
+0 1704156354.2602494
+0 1704156354.2602494
+initial rank 0
+0 1704156354.2819088
 {}
-0 1
-0 1
 {}
-0 1
-0 1
 {}
-0 1
-0 1
 {}

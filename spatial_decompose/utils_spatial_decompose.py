@@ -38,7 +38,8 @@ def pbc1(position,L):
         position_ind=position[i,:]
         position_empty=np.zeros((1,3))
         for j in range(3):
-            position_axis=numba.float64(position_ind[j])
+            # position_axis=numba.float64(position_ind[j])
+            position_axis = position_ind[j]
             if position_axis < 0:
                 position_axis_new=position_axis+L
             elif position_axis > L:
@@ -220,10 +221,10 @@ def cell_to_obj(positions,nx,ny,nz,L):
     return new_cell_list
 
 #@numba.njit()
-def separate_points(infodict, my_rank, world):
+def separate_points(infodict, my_rank, nproc):
     neighbor_spd = None
     # Processor matrix n*n*1 (for comparison with force decomposition)
-    axis = np.sqrt(world)
+    axis = np.sqrt(nproc)
     # Here we need to be careful about only copying the neighboring subcube
     x,y,z = my_rank / axis, my_rank % axis, 0
     x,y,z = int(np.floor(x)), int(np.floor(y)), int(np.floor(z))
@@ -234,14 +235,17 @@ def separate_points(infodict, my_rank, world):
     #     for col in row:
     #         if np.floor(col / world) != np.floor(row[1] / world):
     #             col = np.floor(col / world) * world + world
-    neighbor_rank = np.zeros(9)
-    for t,xyz in enumerate(neighb_xy):
-        for i in xy:
-            if i<0:
-                i = i + world
-            elif i == world:
-                i = i - world
-        neighbor_rank[t] = (xy[0] + xy[1]*axis)
+    if axis<=3:
+        neighbor_rank = np.arange(0,nproc,1)
+    else:
+        neighbor_rank = np.zeros(9)
+        for t,xy in enumerate(neighbor_xy):
+            for i in xy:
+                if i<0:
+                    i = i + axis
+                elif i == axis:
+                    i = i - axis
+            neighbor_rank[t] = (xy[0] + xy[1]*axis)
 
     # copy the info in neighboring ranks
     for i, spd in infodict.items():

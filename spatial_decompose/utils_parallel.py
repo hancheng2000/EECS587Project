@@ -13,7 +13,6 @@ def vel_Ver(infodict,dt,r_limit=2.5,L=6.8):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
-    print(rank,size)
     if rank!=0:
       ## Get the data for the current spatial domain 
       my_spd, neighs_spd=ut.separate_points(infodict, rank)
