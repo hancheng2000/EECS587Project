@@ -1,0 +1,6 @@
+Simulation Cell Size(unitless): 6.8
+Simulation Particles Amount: 256
+File Name: argon256
+Simulation Time: 1.3687632083892822
+Simulation Step: 1
+Force Cut-off: 2.5
