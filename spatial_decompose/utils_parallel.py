@@ -13,7 +13,6 @@ def vel_Ver(comm,infodict,dt,r_limit=2.5,L=6.8,my_rank=0):
   # rank = comm.Get_rank()
   rank = my_rank
   size = comm.Get_size()
-  print(rank,size)
   ## Get the data for the current spatial domain 
   my_spd, neighs_spd=ut.separate_points(infodict, rank, size)
   # LEAP FROG METHOD
@@ -23,8 +22,6 @@ def vel_Ver(comm,infodict,dt,r_limit=2.5,L=6.8,my_rank=0):
   my_spd.V=my_spd.V+my_spd.A*(dt/2)
   #position at dt
   my_spd.P=my_spd.P+my_spd.V*dt
-  if rank==0:
-    print('before pbc1 ',my_spd.P)  
   #PBC rule 1
   my_spd.P=ut.pbc1(position=my_spd.P,L=L)
   my_spd_send=(rank,my_spd)

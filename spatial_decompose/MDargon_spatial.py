@@ -6,7 +6,7 @@ import utils_spatial_decompose as ut
 from mpi4py import MPI
 
 # run params
-stop_step=1
+stop_step=1000
 k_B=1.38064852*10**(-23)
 dt=0.002
 file_name='../data/initial_position_LJ_argon256.txt'
@@ -71,6 +71,8 @@ for step in range(stop_step):
         )
     temp_infodict=comm.gather(my_spd_send,root=0)
     if rank == 0:
+        if step%10==0:
+            print('current time step is ', step)
         temp_infodict=list(filter(None, temp_infodict))
         info_temp=dict(temp_infodict)    
         tmp=ut.concatDict(info_temp)
@@ -88,8 +90,8 @@ for step in range(stop_step):
 if rank == 0:
     end_time = time.time()
     period = end_time-start_time
-    print(f'Run time is {period:.3f}')
-    ut.data_saver(info, PE, KE, T_insta, P_insta, L0, num_atoms,part_type,name,period, stop_step, r_c, 1, False)
+    print(f'Run time is {period:.3f} seconds')
+    ut.data_saver(info, PE, KE, T_insta, P_insta, L0, num_atoms,part_type,name,period, stop_step, r_c, stop_step, False)
 comm.barrier()
 
 # if rank==0:

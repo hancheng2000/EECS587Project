@@ -321,7 +321,7 @@ def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,perio
     # p.write("%s\n" % str(num_atoms))
     # p.write("%s\n" % comment)
     # for i in range(num_atoms):
-    #     p.write("\t%s\n" % str(info[:]))        
+    #     p.write("\t%s\n" % str(info[:]))
     np.savetxt(path_to_file_xyz,info[-1,:,:],fmt='%.6f')
 
     #writing other file

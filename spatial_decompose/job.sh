@@ -5,7 +5,7 @@
 #SBATCH --mem-per-cpu=2000M
 #SBATCH -e job.err
 #SBATCH -o job.out
-#SBATCH -t 00:05:00
+#SBATCH -t 02:00:00
 
 conda activate deepmd-gpu
 echo $(which mpiexec)
