@@ -59,7 +59,7 @@ if rank==0:
 else:
     infotodic = None
     # info = None
-# comm.barrier()
+comm.barrier()
 infotodic = comm.bcast(infotodic, root = 0)
 
 # Run MD
@@ -72,20 +72,7 @@ for step in range(stop_step):
         L=L0,
         my_rank=rank
         )
-    # apply periodic boundary condition
-    my_spd_send[1].P = ut.pbc1(my_spd_send[1].P,L=L0)
-    #calculate and store PE, KE, T_insta, P_insta in parallel        
-    PE_single = ut.LJ_potent_nondimen(my_spd_send[1].P,r_cut=r_c,L=L0)
-    KE_single = ut.Kin_Eng(my_spd_send[1].V)
-    T_single = 2*KE_single*energy_scale/(3*(my_spd_send[1].P.shape[0]-1)*k_B) #k
-    # P_single = ut.insta_pressure(L0,)
-
-    # gather
     temp_infodict=comm.gather(my_spd_send,root=0)
-    comm.reduce([PE_single,MPI.FLOAT],None,op=MPI.SUM,root=0)
-    comm.reduce([KE_single,MPI.FLOAT],None,op=MPI.SUM,root=0)
-    comm.reduce([T_single,MPI.FLOAT],None,op=MPI.SUM,root=0)
-
     if rank == 0:
         if step%20==0:
             print('current time step is ', step)
@@ -94,16 +81,15 @@ for step in range(stop_step):
         tmp=ut.concatDict(info_temp)
         info[step+1,:,:]=np.concatenate((tmp.P,tmp.V,tmp.A),1)
         # info[step+1,:,:] = np.round(info[step+1,:,:],4)
-        # info[step+1,:,0:3] = ut.pbc1(info[step+1,:,0:3],L=L0)
+        info[step+1,:,0:3] = ut.pbc1(info[step+1,:,0:3],L=L0)
         #UPDATE CUBES MAKE SURE ATOMS ARE IN RIGHT CUBES
         infotodic=ut.cell_to_obj(info[step+1,:,:],subdiv[0],subdiv[1],subdiv[2],L0)
-
-        #calculate and store PE, KE, T_insta, P_insta in parallel
-        PE[step+1,:]=PE_single
-        KE[step+1,:]=KE_single
-        T_insta[step+1,:]=T_single/size
-        # P_insta[step+1,:]=ut.insta_pressure(L0,T_insta[step+1],info[step+1,:,0:3],r_c,energy_scale) #unitless
-    # comm.barrier()
+        #calculate and store PE, KE, T_insta, P_insta
+        PE[step+1,:]=ut.LJ_potent_nondimen(info[step+1,:,0:3],r_cut=r_c,L=L0)
+        KE[step+1,:]=ut.Kin_Eng(info[step+1,:,3:6])
+        T_insta[step+1,:]=2*KE[step+1,:]*energy_scale/(3*(size_sim-1)*k_B) #k
+        P_insta[step+1,:]=ut.insta_pressure(L0,T_insta[step+1],info[step+1,:,0:3],r_c,energy_scale) #unitless
+    comm.barrier()
     infotodic=comm.bcast(infotodic,root=0)
 
 if rank == 0:

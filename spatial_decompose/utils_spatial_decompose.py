@@ -308,7 +308,7 @@ def LJ_accel(position,neighb_x_0,r_cut,L, rank):
         accel=np.zeros((r_relat.shape[0],3))
         flag = 0
         for i, r0 in enumerate(r_relat):
-            if r0 <= r_cut:
+            if r0 <= r_cut and r0!=0:
                separation_active_num=separation_new[i,:]
                vector_part=separation_active_num*(1/r0)
                scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
