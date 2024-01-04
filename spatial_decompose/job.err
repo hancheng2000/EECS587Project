@@ -17,6 +17,3 @@ See 'conda init --help' for more information and options.
 IMPORTANT: You may need to close and restart your shell after running 'conda init'.
 
 
-srun: Job step aborted: Waiting up to 302 seconds for job step to finish.
-slurmstepd: error: *** JOB 21499407 ON r003 CANCELLED AT 2024-01-03T19:26:44 DUE TO TIME LIMIT ***
-slurmstepd: error: *** STEP 21499407.0 ON r003 CANCELLED AT 2024-01-03T19:26:44 DUE TO TIME LIMIT ***

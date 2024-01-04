@@ -330,7 +330,7 @@ def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,perio
     # path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
     path_to_file_xyz = "results/"+name+"iter"+iterations+'core'+str(ncore)+'.txt'
     path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+str(ncore)+'core'+".csv"
-    path_to_file_summary = "results/"+name+'core'+str(ncore)+"_summary"+".txt"
+    path_to_file_summary = "results/"+name+"iter"+iterations+'core'+str(ncore)+"_summary"+".txt"
     p= open(path_to_file_xyz,"w")
     s= open(path_to_file_summary,'w')
 

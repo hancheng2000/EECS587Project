@@ -74,7 +74,7 @@ for step in range(stop_step):
         )
     temp_infodict=comm.gather(my_spd_send,root=0)
     if rank == 0:
-        if step%1==0:
+        if step%20==0:
             print('current time step is ', step)
         temp_infodict=list(filter(None, temp_infodict))
         info_temp=dict(temp_infodict)    
