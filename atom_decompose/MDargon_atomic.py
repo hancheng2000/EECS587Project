@@ -5,13 +5,6 @@ from LJ_SpatialDecomp import *
 import utils_spatial_decompose as ut
 from mpi4py import MPI
 
-# MPI initialize
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-print(rank,size)
-comm.barrier()
-
 # run params
 stop_step=1000
 k_B=1.38064852*10**(-23)
@@ -21,10 +14,10 @@ info_init=np.loadtxt(file_name)
 num_atoms=info_init.shape[0]
 
 a_init=np.zeros((num_atoms,3))
-r_c=1.6
+r_c=2.5
 L0=6.8
 #cube division
-subdiv=np.array([int(np.sqrt(size)),int(np.sqrt(size)),1])
+subdiv=np.array([2,2,1])
 energy_scale=1.66*10**(-21)#unit: J, Argon
 sigma=3.4 #unit: Ang, Argon 
 T_dimensional_equal=300#unit K
@@ -32,7 +25,11 @@ T_equal=T_dimensional_equal*k_B/energy_scale
 part_type='LJ'
 name='argon256'
 
-
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+print(rank,size)
+comm.barrier()
 
 if rank==0:
     start_time = time.time()
@@ -74,14 +71,12 @@ for step in range(stop_step):
         )
     temp_infodict=comm.gather(my_spd_send,root=0)
     if rank == 0:
-        if step%1==0:
+        if step%10==0:
             print('current time step is ', step)
         temp_infodict=list(filter(None, temp_infodict))
         info_temp=dict(temp_infodict)    
         tmp=ut.concatDict(info_temp)
         info[step+1,:,:]=np.concatenate((tmp.P,tmp.V,tmp.A),1)
-        # info[step+1,:,:] = np.round(info[step+1,:,:],4)
-        info[step+1,:,0:3] = ut.pbc1(info[step+1,:,0:3],L=L0)
         #UPDATE CUBES MAKE SURE ATOMS ARE IN RIGHT CUBES
         infotodic=ut.cell_to_obj(info[step+1,:,:],subdiv[0],subdiv[1],subdiv[2],L0)
         #calculate and store PE, KE, T_insta, P_insta
@@ -96,11 +91,7 @@ if rank == 0:
     end_time = time.time()
     period = end_time-start_time
     print(f'Run time is {period:.3f} seconds')
-    PE = np.round(PE,4)
-    KE = np.round(KE,4)
-    T_insta = np.round(T_insta,4)
-    P_insta = np.round(P_insta,4)
-    ut.data_saver(info, PE, KE, T_insta, P_insta, L0, num_atoms,part_type,name,period, stop_step, r_c, size, False)
+    ut.data_saver(info, PE, KE, T_insta, P_insta, L0, num_atoms,part_type,name,period, stop_step, r_c, stop_step, False)
 comm.barrier()
 
 # if rank==0:

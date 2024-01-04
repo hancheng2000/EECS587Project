@@ -42,7 +42,8 @@ def pbc1(position,L):
             position_axis = position_ind[j]
             if position_axis < 0:
                 position_axis_new=position_axis+L
-            elif position_axis > L:
+            elif position_axis >= L:
+                print(position_axis)
                 position_axis_new=position_axis-L
             else:
                 position_axis_new=position_axis
@@ -65,7 +66,7 @@ def pbc2(separation,L):
             separation_axis = separation_ind[j]
             if separation_axis < -L/2:
                 separation_axis_new=separation_axis+L
-            elif separation_axis > L/2:
+            elif separation_axis >= L/2:
                 separation_axis_new=separation_axis-L
             else:
                 separation_axis_new=separation_axis
@@ -184,6 +185,7 @@ def cell_to_dict(info,nx,ny,nz,L):
     xinterval=L/nx
     yinterval=L/ny
     zinterval=L/nz
+    # print('interval ', xinterval, yinterval)
     #cell_lists={}
     for i in range(nx*ny*nz): 
       cell_dict[i]= np.zeros((1,9))
@@ -192,7 +194,10 @@ def cell_to_dict(info,nx,ny,nz,L):
       #check extra one!!!
       #if statements !!!!!!!
       #check later
-      atomID=int(((np.floor(atom[:,0]/xinterval)+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
+    #   atomID=int(((np.floor(atom[:,0]/xinterval)+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
+      atomID=int(((np.floor(atom[:,0]/xinterval)+(np.floor(atom[:,1]/yinterval))*ny))[0])
+      if atomID>15:
+          print(atomID,atom, atom[:,0][0]==L)
       cell_dict[atomID]=np.append(cell_dict[atomID],atom,axis=0)
     for i in range(nx*ny*nz):
        cell_dict[i]=cell_dict[i][1:,:]
@@ -226,7 +231,7 @@ def separate_points(infodict, my_rank, nproc):
     # Processor matrix n*n*1 (for comparison with force decomposition)
     axis = np.sqrt(nproc)
     # Here we need to be careful about only copying the neighboring subcube
-    x,y,z = my_rank / axis, my_rank % axis, 0
+    x,y,z = my_rank % axis, my_rank / axis, 0
     x,y,z = int(np.floor(x)), int(np.floor(y)), int(np.floor(z))
     x_mesh,y_mesh = np.meshgrid(np.linspace(x-1,x+1,3),np.linspace(y-1,y+1,3))
     neighbor_xy = np.column_stack((x_mesh.ravel(),y_mesh.ravel()))
@@ -240,13 +245,30 @@ def separate_points(infodict, my_rank, nproc):
     else:
         neighbor_rank = np.zeros(9)
         for t,xy in enumerate(neighbor_xy):
-            for i in xy:
-                if i<0:
-                    i = i + axis
-                elif i == axis:
-                    i = i - axis
+            xy_old = xy.copy()
+            if xy[0]<0:
+                xy[0] = xy[0] + axis
+            if xy[0]==axis:
+                xy[0] = xy[0] - axis
+            # elif xy[0]==axis and xy[1]<axis-1:
+            #     xy[0] = xy[0] - axis
+            #     xy[1] = xy[1] + 1
+            # elif xy[0]==axis and xy[1]>=axis-1:
+            #     xy[0] = xy[0] - axis
+            #     xy[1] = 0
+            if xy[1]<0:
+                xy[1] = xy[1] + axis
+            if xy[1] == axis:
+                xy[1] = xy[1] - axis
+                # xy[0] = xy[0]
+            # print(xy_old,xy)
+            # for i in xy:
+            #     if i<0:
+            #         i = i + axis
+            #     elif i == axis:
+            #         i = i - axis
             neighbor_rank[t] = (xy[0] + xy[1]*axis)
-    # print('neighboring ',my_rank, neighbor_rank)
+    # print('neighboring ',my_rank, (x,y), neighbor_rank)
 
     # copy the info in neighboring ranks
     for i, spd in infodict.items():
@@ -268,7 +290,7 @@ def concatDict(infodict):
   return wholeDict
 
 #@numba.njit()
-def LJ_accel(position,neighb_x_0,r_cut,L):
+def LJ_accel(position,neighb_x_0,r_cut,L, rank):
     subcube_atoms=position.shape[0]
     #careful kind of confusing
     position=np.concatenate((position,neighb_x_0),0)
@@ -284,6 +306,7 @@ def LJ_accel(position,neighb_x_0,r_cut,L):
         r_relat=np.sqrt(np.sum(separation_new**2,axis=1))
         #get out the particles inside the r_cut
         accel=np.zeros((r_relat.shape[0],3))
+        flag = 0
         for i, r0 in enumerate(r_relat):
             if r0 <= r_cut:
                separation_active_num=separation_new[i,:]
@@ -291,17 +314,23 @@ def LJ_accel(position,neighb_x_0,r_cut,L):
                scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
                accel_num=vector_part*scalar_part
                accel[i,:]=accel_num
+            #    if np.abs(position_atom[0]-4.641496)<0.001 and np.abs(position_atom[1]-3.092705)<0.001 and np.abs(position_atom[2]-3.090466)<0.001:
+            #        flag = 1
+            #        print(position_atom, accel_num, r0)
         update_accel[atom,:]=np.sum(accel,axis=0)
+        # if np.abs(update_accel[atom,:][0]+6.2848242)<1e-4:
+        #     print('update accel',update_accel[atom,:])
+        #     print(accel[accel.any(axis=1)],r_relat[accel.any(axis=1)])
     return update_accel.reshape(subcube_atoms,3)
 
-def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,period,stop_step, r_c, iterations_int=1000, make_directory=True):
-    iterations=str(iterations_int)
+def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,period,stop_step, r_c, ncore = 8, make_directory=True):
+    iterations=str(stop_step)
     if make_directory == True:
         os.mkdir('results')
     # path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
-    path_to_file_xyz = "results/"+name+"iter"+iterations+'.txt'
-    path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+".csv"
-    path_to_file_summary = "results/"+name+"_summary"+".txt"
+    path_to_file_xyz = "results/"+name+"iter"+iterations+'core'+str(ncore)+'.txt'
+    path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+str(ncore)+'core'+".csv"
+    path_to_file_summary = "results/"+name+'core'+str(ncore)+"_summary"+".txt"
     p= open(path_to_file_xyz,"w")
     s= open(path_to_file_summary,'w')
 
@@ -316,13 +345,15 @@ def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,perio
 
     #writing xyz file
     comment = 'This is the position of the system of the final step'
-    print(path_to_file_xyz)
+    # print(path_to_file_xyz)
     # for atoms in info[-int(iterations):,:,:]:
     # p.write("%s\n" % str(num_atoms))
     # p.write("%s\n" % comment)
     # for i in range(num_atoms):
     #     p.write("\t%s\n" % str(info[:]))
-    np.savetxt(path_to_file_xyz,info[-1,:,:],fmt='%.6f')
+    # output = info[-1,:,:][np.argsort(info[-1,:,0])]
+    output = info[-1,:,:]
+    np.savetxt(path_to_file_xyz,output,fmt='%.6f')
 
     #writing other file
     other_dict={}
