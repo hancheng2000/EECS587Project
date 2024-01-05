@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -N 1 
-#SBATCH -n 4
+#SBATCH -n 9
 #SBATCH -p RM-small
 #SBATCH --mem-per-cpu=2000M
 #SBATCH -e job.err

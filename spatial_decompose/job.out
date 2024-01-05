@@ -1,8 +1,13 @@
 /opt/intel/oneapi/intelpython/latest/bin/mpirun
-0 4
-2 4
-3 4
-1 4
+6 9
+1 9
+3 9
+4 9
+7 9
+2 9
+5 9
+8 9
+0 9
 123.00000045477438
 current time step is  0
 current time step is  20
@@ -54,4 +59,4 @@ current time step is  920
 current time step is  940
 current time step is  960
 current time step is  980
-Run time is 341.940 seconds
+Run time is 180.458 seconds
