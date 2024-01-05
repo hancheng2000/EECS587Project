@@ -11,4 +11,4 @@ conda activate dpgpu
 # module load openmpi/4.0.5-gcc10.2.0
 echo $(which mpirun)
 # ~/.conda/envs/dpgpu/bin/mpirun -np $SLURM_NTASKS python MDargon_spatial.py
-~/.conda/envs/dpgpu/bin/mpirun -np $SLURM_NTASKS python MDargon_serial.py
+python MDargon_serial.py

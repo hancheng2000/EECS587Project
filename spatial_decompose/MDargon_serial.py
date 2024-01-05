@@ -2,7 +2,9 @@ import numpy as np
 import time
 import copy
 from LJ_SpatialDecomp import *
-import utils_spatial_decompose as ut
+# import utils_spatial_decompose as ut
+import utils as ut
+import utils_spatial_decompose
 from mpi4py import MPI
 
 
@@ -38,12 +40,14 @@ def LJ_acc(position,r_cut,L, rank):
         #     print(accel[accel.any(axis=1)],r_relat[a
     return update_accel.reshape(subcube_atoms,3)
 
-# MPI initialize
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-print(rank,size)
-comm.barrier()
+# # MPI initialize
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()
+# size = comm.Get_size()
+# print(rank,size)
+# comm.barrier()
+rank = 0
+size = 1
 
 # run params
 stop_step=1000
@@ -65,42 +69,42 @@ T_equal=T_dimensional_equal*k_B/energy_scale
 part_type='LJ'
 name='argon256'
 
-# if rank==0:
-start_time = time.time()
-# # initialize
-k_B=1.38064852*10**(-23)
-size_sim=info_init.shape[0]
-# x_dot_init=ut.random_vel_generator(size_sim,T_equal,energy_scale)
 #initialize PE, KE, T_insta, P_insta, Momentum
 PE=np.zeros((stop_step+1,1))
 KE=np.zeros((stop_step+1,1))
 T_insta=np.zeros((stop_step+1,1))
-P_insta=np.zeros((stop_step+1,1))      
+P_insta=np.zeros((stop_step+1,1))     
+
+# if rank==0:
+
+# # initialize
+k_B=1.38064852*10**(-23)
+size_sim=info_init.shape[0]
+# x_dot_init=ut.random_vel_generator(size_sim,T_equal,energy_scale)
 #initialize the info matrix
 info=np.zeros((stop_step+1,size_sim,9))
 # info[0,:,:]=np.concatenate((position_init,x_dot_init,a_init),axis=1)
+start_time = time.time()
 info[0,:,:] = info_init
 # np.savetxt('../data/init.txt',info[0,:,:],fmt='%.6f')
-infotodic=ut.cell_to_obj((info[0,:,:]),subdiv[0],subdiv[1],subdiv[2],L0)
+# infotodic=ut.cell_to_obj((info[0,:,:]),subdiv[0],subdiv[1],subdiv[2],L0)
+my_spd = ut.SpatialDomainData(info[0,:,0:3],info[0,:,3:6],info[0,:,6:9])
 #zero step value
-PE[0,:]=ut.LJ_potent_nondimen(info[0,:,0:3],r_cut=r_c,L=L0)
+PE[0,:]=ut.LJ_potent_nondimen(info[0,:,0:3],r_cut=r_c,L=L0)/2
 KE[0,:]=ut.Kin_Eng(info[0,:,3:6])
 T_insta[0,:]=2*KE[0,:]*energy_scale/(3*(size_sim-1)*k_B) #k
-P_insta[0,:]=ut.insta_pressure(L0,T_insta[0],info[0,:,0:3],r_c,energy_scale) #unitless      
+P_insta[0,:]=ut.insta_pressure(L0,T_insta[0],info[0,:,0:3],r_c,energy_scale)/2 #unitless      
 
 # Run MD
 for step in range(stop_step):
-    # neighboring atoms
-    neighb_spd = infotodic[0]
-    my_spd = infotodic[0]
-    my_spd.A = ut.LJ_accel(position=my_spd.P,neighb_x_0=neighb_spd.P,r_cut=r_c,L=L0,rank=0)/2.0
+    my_spd.A = LJ_acc(position=my_spd.P,r_cut=r_c,L=L0,rank=0)
     my_spd.V=my_spd.V+my_spd.A*(dt)
     my_spd.P=my_spd.P+my_spd.V*dt
     my_spd.P=ut.pbc1(position=my_spd.P,L=L0)
     if step%20==0:
         print('current time step is ', step)
-    temp_infodict = (0,my_spd)
-    temp_infodict=list(filter(None, temp_infodict))
+    # temp_infodict = (0,my_spd)
+    # temp_infodict=list(filter(None, temp_infodict))
     temp_infodict = [(0,my_spd)]
     info_temp=dict(temp_infodict)
     # print(info_temp)
@@ -109,8 +113,8 @@ for step in range(stop_step):
     # info[step+1,:,:] = np.round(info[step+1,:,:],4)
     info[step+1,:,0:3] = ut.pbc1(info[step+1,:,0:3],L=L0)
     #UPDATE CUBES MAKE SURE ATOMS ARE IN RIGHT CUBES
-    infotodic=ut.cell_to_obj(info[step+1,:,:],subdiv[0],subdiv[1],subdiv[2],L0)
-
+    # infotodic=ut.cell_to_obj(info[step+1,:,:],subdiv[0],subdiv[1],subdiv[2],L0)
+    
     #calculate and store PE, KE, T_insta, P_insta in parallel
     PE[step+1,:]=ut.LJ_potent_nondimen(info[step+1,:,0:3],r_cut=r_c,L=L0)
     KE[step+1,:]=ut.Kin_Eng(info[step+1,:,3:6])
@@ -125,7 +129,7 @@ PE = np.round(PE,4)
 KE = np.round(KE,4)
 T_insta = np.round(T_insta,4)
 P_insta = np.round(P_insta,4)
-ut.data_saver(info, PE, KE, T_insta, P_insta, L0, num_atoms,part_type,name,period, stop_step, r_c, size, False)
+utils_spatial_decompose.data_saver(info, PE, KE, T_insta, P_insta, L0, num_atoms,part_type,name,period, stop_step, r_c, size, False)
 
 # if rank==0:
 #     start_time=time.time()
