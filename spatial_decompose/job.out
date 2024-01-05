@@ -1,1 +1,57 @@
 /opt/intel/oneapi/intelpython/latest/bin/mpirun
+0 4
+2 4
+3 4
+1 4
+123.00000045477438
+current time step is  0
+current time step is  20
+current time step is  40
+current time step is  60
+current time step is  80
+current time step is  100
+current time step is  120
+current time step is  140
+current time step is  160
+current time step is  180
+current time step is  200
+current time step is  220
+current time step is  240
+current time step is  260
+current time step is  280
+current time step is  300
+current time step is  320
+current time step is  340
+current time step is  360
+current time step is  380
+current time step is  400
+current time step is  420
+current time step is  440
+current time step is  460
+current time step is  480
+current time step is  500
+current time step is  520
+current time step is  540
+current time step is  560
+current time step is  580
+current time step is  600
+current time step is  620
+current time step is  640
+current time step is  660
+current time step is  680
+current time step is  700
+current time step is  720
+current time step is  740
+current time step is  760
+current time step is  780
+current time step is  800
+current time step is  820
+current time step is  840
+current time step is  860
+current time step is  880
+current time step is  900
+current time step is  920
+current time step is  940
+current time step is  960
+current time step is  980
+Run time is 341.940 seconds

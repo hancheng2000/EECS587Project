@@ -43,7 +43,6 @@ def pbc1(position,L):
             if position_axis < 0:
                 position_axis_new=position_axis+L
             elif position_axis >= L:
-                print(position_axis)
                 position_axis_new=position_axis-L
             else:
                 position_axis_new=position_axis
@@ -203,8 +202,6 @@ def cell_to_dict(info,nx,ny,nz,L):
       #check later
     #   atomID=int(((np.floor(atom[:,0]/xinterval)+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
       atomID=int(((np.floor(atom[:,0]/xinterval)+(np.floor(atom[:,1]/yinterval))*ny))[0])
-      if atomID>15:
-          print(atomID,atom, atom[:,0][0]==L)
       cell_dict[atomID]=np.append(cell_dict[atomID],atom,axis=0)
     for i in range(nx*ny*nz):
        cell_dict[i]=cell_dict[i][1:,:]

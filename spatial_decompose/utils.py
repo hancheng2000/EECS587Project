@@ -1,9 +1,9 @@
 import numpy as np
-import numba
-from numba.experimental import jitclass
-from numba import float64
-from numba.typed import Dict
-from numba.core import types
+# import numba
+# from numba.experimental import jitclass
+# from numba import float64
+# from numba.typed import Dict
+# from numba.core import types
 import os
 import pandas as pd
 import copy
@@ -27,7 +27,7 @@ class SpatialDomainData:
         self.V = np.concatenate((self.V, other.V), 0)
         self.A = np.concatenate((self.A, other.A), 0)
 
-@numba.njit
+# @numba.njit
 def pbc1(position,L):
     ##This function perform the first rule of periodic boundary condition 
     #Input: position -- the position before PBC1
@@ -38,7 +38,8 @@ def pbc1(position,L):
         position_ind=position[i,:]
         position_empty=np.zeros((1,3))
         for j in range(3):
-            position_axis=numba.float64(position_ind[j])
+            # position_axis=numba.float64(position_ind[j])
+            position_axis = position_ind[j]
             if position_axis < 0:
                 position_axis_new=position_axis+L
             elif position_axis > L:
@@ -49,7 +50,7 @@ def pbc1(position,L):
         position_new[i,:]=position_empty
     return position_new
 
-@numba.njit
+# @numba.njit
 def pbc2(separation,L):
     ##This function perform the second rule of periodic boundary condition 
     #Input: separation -- separation before PBC2
@@ -60,7 +61,8 @@ def pbc2(separation,L):
         separation_ind=separation[i,:]
         separation_empty=np.zeros((1,3))
         for j in range(3):
-            separation_axis=numba.float64(separation_ind[j])
+            # separation_axis=numba.float64(separation_ind[j])
+            separation_axis = separation_ind[j]
             if separation_axis < -L/2:
                 separation_axis_new=separation_axis+L
             elif separation_axis > L/2:
@@ -71,7 +73,7 @@ def pbc2(separation,L):
         separation_new[i,:]=separation_empty
     return separation_new
 
-@numba.njit
+# @numba.njit
 def random_vel_generator(n,T_equal,e_scale): 
     ##This function generate random initial velocity at the desired temperature 
     #Input: n -- number of atoms
@@ -95,7 +97,7 @@ def random_vel_generator(n,T_equal,e_scale):
     vel_per_particle=vel_per_particle*scaling_ratio
     return vel_per_particle
 
-@numba.njit
+# @numba.njit
 def Kin_Eng(velocity):
     ##This function compute the average kinetic energy of the system at given the velocity
     #Input: velocity -- the velocities of all the particles
@@ -105,7 +107,7 @@ def Kin_Eng(velocity):
     Kinetic_avg=np.sum(Kinetic_per,axis=0)
     return Kinetic_avg
 
-@numba.njit
+# @numba.njit
 def LJ_potent_nondimen(position,r_cut,L):
     ##This function compute the nondimensional potential energy of the system at the given position
     #Input: position -- the position of all the particles at this instance
@@ -133,7 +135,7 @@ def LJ_potent_nondimen(position,r_cut,L):
             update_LJ[atom,:]=np.sum(np.array(LJ),axis=0)    
     return np.sum(update_LJ)
 
-@numba.njit
+# @numba.njit
 def insta_pressure(L,T,position,r_cut,e_scale):
     ##This function computes the dimensionless pressure
     #Inputs: L -- The size of the simulation cell
@@ -172,12 +174,13 @@ def insta_pressure(L,T,position,r_cut,e_scale):
     return pres_insta
 
 #need to initialize the type before calling the function
-float_array = types.float64[:,:]
-@numba.njit()
+# float_array = types.float64[:,:]
+# @numba.njit()
 def cell_to_dict(info,nx,ny,nz,L):
     ##This is the helper function to create dictionary containing matrix for cell_to_obj
     #Inpust: info -- the position + velocity + acceleration of the patricles at the
-    cell_dict = Dict.empty(key_type=types.int64, value_type=float_array)
+    # cell_dict = Dict.empty(key_type=types.int64, value_type=float_array)
+    cell_dict = {}
     xinterval=L/nx
     yinterval=L/ny
     zinterval=L/nz
