@@ -1,0 +1,6 @@
+Simulation Cell Size(unitless): 13.6
+Simulation Particles Amount: 2048
+File Name: argon2048
+Simulation Time: 107.88297438621521
+Simulation Step: 20
+Force Cut-off: 1.6

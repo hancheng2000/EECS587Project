@@ -257,16 +257,17 @@ print(rank,size)
 comm.barrier()
 
 # run params
-stop_step=1
+stop_step=20
 k_B=1.38064852*10**(-23)
 dt=0.002
-file_name='../data/initial_position_LJ_argon256.txt'
+file_name='../data/initial_position_LJ_argon2048.txt'
 info_init=np.loadtxt(file_name)
 num_atoms=info_init.shape[0]
 
 a_init=np.zeros((num_atoms,3))
 r_c=1.6
-L0=6.8
+L0 = (num_atoms/256)**(1.0/3.0) * 6.8
+print('L0= ',L0)
 #cube division
 subdiv=np.array([int(np.sqrt(size)),int(np.sqrt(size)),1])
 energy_scale=1.66*10**(-21)#unit: J, Argon
@@ -274,7 +275,7 @@ sigma=3.4 #unit: Ang, Argon
 T_dimensional_equal=300#unit K
 T_equal=T_dimensional_equal*k_B/energy_scale
 part_type='LJ'
-name='argon256'
+name=f'argon{num_atoms}'
 
 #initialize PE, KE, T_insta, P_insta, Momentum
 PE=np.zeros((stop_step+1,1))
