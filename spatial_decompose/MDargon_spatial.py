@@ -80,7 +80,6 @@ def pbc1(position,L):
         position_new[i,:]=position_empty
     return position_new
 
-# @numba.njit
 def pbc2(separation,L):
     ##This function perform the second rule of periodic boundary condition 
     #Input: separation -- separation before PBC2

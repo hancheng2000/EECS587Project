@@ -42,7 +42,7 @@ def pbc1(position,L):
             position_axis = position_ind[j]
             if position_axis < 0:
                 position_axis_new=position_axis+L
-            elif position_axis >= L:
+            elif position_axis > L:
                 position_axis_new=position_axis-L
             else:
                 position_axis_new=position_axis
@@ -65,7 +65,7 @@ def pbc2(separation,L):
             separation_axis = separation_ind[j]
             if separation_axis < -L/2:
                 separation_axis_new=separation_axis+L
-            elif separation_axis >= L/2:
+            elif separation_axis > L/2:
                 separation_axis_new=separation_axis-L
             else:
                 separation_axis_new=separation_axis
@@ -108,39 +108,35 @@ def Kin_Eng(velocity):
     return Kinetic_avg
 
 # @numba.njit
-def LJ_potent_nondimen(position,position_neighbor,r_cut,L):
+def LJ_potent_nondimen(position,r_cut,L):
     ##This function compute the nondimensional potential energy of the system at the given position
     #Input: position -- the position of all the particles at this instance
     #       r_cut -- the cutoff for the short-range force field
     #       L --  the size of the simulation cell
     #Output: np.sum(update_LJ) -- the potential energy of the system at this instance
     num=position.shape[0]
-    position = np.concatenate((position, position_neighbor),0)
-    update_LJ=np.zeros((num,1))
+    update_LJ=np.zeros((num-1,1))
     #fix value for a certain r_limit
     dU_drcut=24*r_cut**(-7)-48*r_cut**(-13)
     U_rcut=4*(r_cut**(-12)-r_cut**(-6))
-    for atom in range(num):
-        # position_relevent=position[atom:,:]
-        # position_other=position_relevent[1:,:]
-        position_atom = position[atom,:]
-        position_other=np.concatenate((position[0:atom,:],position[atom+1:,:]),axis=0)
+    for atom in range(num-1):
+        position_relevent=position[atom:,:]
+        position_other=position_relevent[1:,:]
         #pbc rule2
-        # separation=position_relevent[0,:]-position_other
-        separation = position_atom - position_other
+        separation=position_relevent[0,:]-position_other
         separation_new=pbc2(separation=separation,L=L)
         r_relat=np.sqrt(np.sum(separation_new**2,axis=1)).reshape(separation_new.shape[0],)
         LJ=[]
         #get out the particles inside the r_limit
         for r0 in r_relat:
-            if r0 <= r_cut and r0!=0:
+            if r0 <= r_cut:
                LJ_num=4*r0**(-12)-4*r0**(-6)-U_rcut-(r0-r_cut)*dU_drcut
                LJ.append(LJ_num)
             update_LJ[atom,:]=np.sum(np.array(LJ),axis=0)    
-    return np.sum(update_LJ)/2
+    return np.sum(update_LJ)
 
 # @numba.njit
-def insta_pressure(L,T,position,position_neighbor,r_cut,e_scale):
+def insta_pressure(L,T,position,r_cut,e_scale):
     ##This function computes the dimensionless pressure
     #Inputs: L -- The size of the simulation cell
     #        T -- The simulation temperature
@@ -152,14 +148,11 @@ def insta_pressure(L,T,position,position_neighbor,r_cut,e_scale):
     V=L**3
     pres_ideal=num*T*(k_B/e_scale)/V
     dU_drcut=24*r_cut**(-7)-48*r_cut**(-13)
-    pres_virial=np.zeros((num,1))
-    position = np.concatenate((position,position_neighbor),0)
-    for atom in range(num):
-        # position_relevent=position[atom:,:]
-        # position_other=position_relevent[1:,:]
-        # position_atom=position_relevent[0,:]
-        position_atom = position[atom,:]
-        position_other = np.concatenate((position[0:atom,:],position[atom+1:,:]),axis=0)
+    pres_virial=np.zeros((num-1,1))
+    for atom in range(num-1):
+        position_relevent=position[atom:,:]
+        position_other=position_relevent[1:,:]
+        position_atom=position_relevent[0,:]
         #pbc rule 2
         separation=position_atom-position_other
         separation_new=pbc2(separation=separation,L=L)
@@ -168,7 +161,7 @@ def insta_pressure(L,T,position,position_neighbor,r_cut,e_scale):
         active_r_relat=[]
         #get out the particles inside the r_limit
         for r0 in r_relat:
-            if r0 <= r_cut and r0!=0:
+            if r0 <= r_cut:
                #active_r_relat.append(r0)
                force_num=-(24*r0**(-7)-48*r0**(-13))+dU_drcut
                force.append(force_num)
@@ -177,60 +170,66 @@ def insta_pressure(L,T,position,position_neighbor,r_cut,e_scale):
         active_amount=np.array(active_r_relat).shape[0]
         rijFij=np.array(active_r_relat).reshape(1,active_amount)@np.array(force).reshape(active_amount,1)
         pres_virial[atom,:]=rijFij
-    pres_insta=pres_ideal+np.sum(pres_virial,axis=0)/(3*V)/2
+    pres_insta=pres_ideal+np.sum(pres_virial,axis=0)/(3*V)
     return pres_insta
 
 #need to initialize the type before calling the function
 # float_array = types.float64[:,:]
 # @numba.njit()
-def cell_to_dict(info,ncore):
-    # cell_lists = Dict.empty(key_type=types.int64, value_type=float_array)
+def cell_to_dict(info,nx,ny,nz,L):
+    ##This is the helper function to create dictionary containing matrix for cell_to_obj
+    #Inpust: info -- the position + velocity + acceleration of the patricles at the
+    # cell_dict = Dict.empty(key_type=types.int64, value_type=float_array)
     cell_dict = {}
-    for i in range(ncore):
-        cell_dict[i] = np.zeros((1,9))
+    xinterval=L/nx
+    yinterval=L/ny
+    zinterval=L/nz
+    #cell_lists={}
+    for i in range(1,nx*ny*nz+1): 
+      cell_dict[i]= np.zeros((1,9))
     for i in range(info.shape[0]):
-        # atomic coordinates, velocity and acceleration
-        atom = info[i,0:9].reshape(1,9)
-        atomID = int(np.floor(i*ncore/info.shape[0]))
-        cell_dict[atomID] = np.append(cell_dict[atomID],atom,axis=0)
-    for i in range(ncore):
-        cell_dict[i] = cell_dict[i][1:,:]
-    return cell_dict
+      atom=info[i,0:9].reshape(1,9)
+      #check extra one!!!
+      #if statements !!!!!!!
+      #check later
+      atomID=int(((np.floor(atom[:,0]/xinterval)+1+(np.floor(atom[:,1]/yinterval))*ny)+(np.floor(atom[:,2]/zinterval))*(nx*ny))[0])
+      cell_dict[atomID]=np.append(cell_dict[atomID],atom,axis=0)
+    for i in range(1,nx*ny*nz+1):
+       cell_lists[i]=cell_lists[i][1:,:]
+    return cell_lists
 
-def cell_to_obj(info,ncore):
-    cell_lists = cell_to_dict(info,ncore)
-    new_cell_list = {}
-    for i in range(ncore):
-        if cell_lists[i].shape[0]!=0:        
-            temp_reshaped=cell_lists[i]
-            temp_position = temp_reshaped[:,0:3]
-            assert(temp_position.shape[1] == 3)
-            temp_velocity = temp_reshaped[:,3:6]
-            temp_acceleration = temp_reshaped[:,6:9]
-            spatial_domain_data = SpatialDomainData(temp_position,
-                                                    temp_velocity,
-                                                    temp_acceleration)
-            new_cell_list[i] = spatial_domain_data
-        else:
-            new_cell_list[i] = SpatialDomainData(np.empty((0,3)),
+def cell_to_obj(positions,nx,ny,nz,L):
+    cell_lists=cell_to_dict(positions,nx,ny,nz,L)
+    new_cell_list={}
+    for i in range(1,nx*ny*nz+1):
+      # I think this works but we should think more about what an "empty" shape means
+      # currently when a key points to an empty cube the cube has a position vector of dimensions [0,3]
+      if cell_lists[i].shape[0]!=0:
+        temp_reshaped=cell_lists[i]
+        temp_position = temp_reshaped[:,0:3]
+        assert(temp_position.shape[1] == 3)
+        temp_velocity = temp_reshaped[:,3:6]
+        temp_acceleration = temp_reshaped[:,6:9]
+        spatial_domain_data = SpatialDomainData(temp_position,
+                                                temp_velocity,
+                                                temp_acceleration)
+        new_cell_list[i] = spatial_domain_data
+      else:
+        new_cell_list[i] = SpatialDomainData(np.empty((0,3)),
                                           np.empty((0,3)),
                                           np.empty((0,3)))
-
     return new_cell_list
 
 #@numba.njit()
-def separate_points(infodict, my_rank, nproc):
-    neighb_spd = None
-    all_ranks = np.arange(0,nproc,1)
-    neighbor_rank = np.concatenate((all_ranks[:my_rank],all_ranks[my_rank+1:]),axis=0)
-    # copy the info in neighboring ranks
-    for i, spd in infodict.items():
-        if i!=my_rank and i in neighbor_rank:
-            if neighb_spd is None:
-                neighb_spd = copy.deepcopy(spd)
-            else:
-                neighb_spd.concat(spd)
-    return infodict[my_rank], neighb_spd
+def separate_points(infodict, my_i):
+  neighb_spd=None
+  for i,spd in infodict.items():
+    if i!=my_i:
+      if (neighb_spd is None):
+        neighb_spd = copy.deepcopy(spd)
+      else:
+        neighb_spd.concat(spd)
+  return infodict[my_i], neighb_spd
 
 #@numba.njit
 def concatDict(infodict):
@@ -243,7 +242,7 @@ def concatDict(infodict):
   return wholeDict
 
 #@numba.njit()
-def LJ_accel(position,neighb_x_0,r_cut,L, rank):
+def LJ_accel(position,neighb_x_0,r_cut,L):
     subcube_atoms=position.shape[0]
     #careful kind of confusing
     position=np.concatenate((position,neighb_x_0),0)
@@ -259,71 +258,84 @@ def LJ_accel(position,neighb_x_0,r_cut,L, rank):
         r_relat=np.sqrt(np.sum(separation_new**2,axis=1))
         #get out the particles inside the r_cut
         accel=np.zeros((r_relat.shape[0],3))
-        flag = 0
         for i, r0 in enumerate(r_relat):
-            if r0 <= r_cut and r0!=0:
+            if r0 <= r_cut:
                separation_active_num=separation_new[i,:]
                vector_part=separation_active_num*(1/r0)
                scalar_part=48*r0**(-13)-24*r0**(-7)-dU_drcut
                accel_num=vector_part*scalar_part
                accel[i,:]=accel_num
-            #    if np.abs(position_atom[0]-4.641496)<0.001 and np.abs(position_atom[1]-3.092705)<0.001 and np.abs(position_atom[2]-3.090466)<0.001:
-            #        flag = 1
-            #        print(position_atom, accel_num, r0)
         update_accel[atom,:]=np.sum(accel,axis=0)
-        # if np.abs(update_accel[atom,:][0]+6.2848242)<1e-4:
-        #     print('update accel',update_accel[atom,:])
-        #     print(accel[accel.any(axis=1)],r_relat[accel.any(axis=1)])
     return update_accel.reshape(subcube_atoms,3)
 
-def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,period,stop_step, r_c, ncore = 8, make_directory=True):
-    iterations=str(stop_step)
+def data_saver(info, PE, KE, T_insta, P_insta, L, num_atoms,part_type,name,period,stop_step, r_c, iterations_int=1000, make_directory=True):
+    iterations=str(iterations_int)
     if make_directory == True:
         os.mkdir('results')
-    # path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
-    path_to_file_xyz = "results/"+name+"iter"+iterations+'core'+str(ncore)+'.txt'
-    path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+str(ncore)+'core'+".csv"
-    path_to_file_summary = "results/"+name+"iter"+iterations+'core'+str(ncore)+"_summary"+".txt"
-    p= open(path_to_file_xyz,"w")
-    s= open(path_to_file_summary,'w')
+        path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
+        path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+".csv"
+        path_to_file_summary = "results/"+name+"_summary"+".txt"
+        p= open(path_to_file_xyz,"w")
+        s= open(path_to_file_summary,'w')
 
-    # #writing xyz file
-    # comment = 'This is the position of the system during the last '+iterations+' steps'
-    # # for atoms in info[-int(iterations):,:,:]:
-    #     p.write("%s\n" % str(num_atoms))
-    #     p.write("%s\n" % comment)
-    #     for atom in atoms:
-    #         # p.write(part_type)
-    #         p.write("\t%s\n" % str(atom)[1:-2])
+        #writing xyz file
+        comment = 'This is the position of the system during the last '+iterations+' steps'
+        for atoms in info[-int(iterations):,:,0:3]:
+            p.write("%s\n" % str(num_atoms))
+            p.write("%s\n" % comment)
+            for atom in atoms:
+                p.write(part_type)
+                p.write("\t%s\n" % str(atom)[1:-2])
 
-    #writing xyz file
-    comment = 'This is the position of the system of the final step'
-    # print(path_to_file_xyz)
-    # for atoms in info[-int(iterations):,:,:]:
-    # p.write("%s\n" % str(num_atoms))
-    # p.write("%s\n" % comment)
-    # for i in range(num_atoms):
-    #     p.write("\t%s\n" % str(info[:]))
-    # output = info[-1,:,:][np.argsort(info[-1,:,0])]
-    output = info[-1,:,:]
-    np.savetxt(path_to_file_xyz,output,fmt='%.6f')
+        #writing other file
+        other_dict={}
+        other_dict['KE']=KE.reshape(KE.shape[0],)
+        other_dict['PE']=PE.reshape(PE.shape[0],)
+        other_dict['T_insta']=T_insta.reshape(T_insta.shape[0],)
+        other_dict['P_insta']=P_insta.reshape(P_insta.shape[0],)
+        other_df=pd.DataFrame.from_dict(other_dict)
+        other_df.to_csv(path_to_file_other,index_label='step')
 
-    #writing other file
-    other_dict={}
-    other_dict['KE']=KE.reshape(KE.shape[0],)
-    other_dict['PE']=PE.reshape(PE.shape[0],)
-    other_dict['T_insta']=T_insta.reshape(T_insta.shape[0],)
-    other_dict['P_insta']=P_insta.reshape(P_insta.shape[0],)
-    other_df=pd.DataFrame.from_dict(other_dict)
-    other_df.to_csv(path_to_file_other,index_label='step')
+        #writing summary file
+        s.write("Simulation Cell Size(unitless): "+str(L)+"\n")
+        s.write("Simulation Particles Amount: "+str(num_atoms)+"\n")
+        s.write("File Name: "+str(name)+"\n")
+        s.write("Simulation Time: "+ str(period)+"\n")
+        s.write("Simulation Step: "+str(stop_step)+"\n")
+        s.write("Force Cut-off: "+str(r_c)+"\n")
+        p.close()
+        s.close()
+    else:
+        path_to_file_xyz="results/"+name+"position_last"+iterations+"stps"+".xyz"
+        path_to_file_other = "results/"+name+"_Energy_Temp_Pres"+".csv"
+        path_to_file_summary = "results/"+name+"_summary"+".txt"
+        p= open(path_to_file_xyz,"w")
+        s= open(path_to_file_summary,'w')
 
-    #writing summary file
-    s.write("Simulation Cell Size(unitless): "+str(L)+"\n")
-    s.write("Simulation Particles Amount: "+str(num_atoms)+"\n")
-    s.write("File Name: "+str(name)+"\n")
-    s.write("Simulation Time: "+ str(period)+"\n")
-    s.write("Simulation Step: "+str(stop_step)+"\n")
-    s.write("Force Cut-off: "+str(r_c)+"\n")
-    p.close()
-    s.close()
+        #writing xyz file
+        comment = 'This is the position of the system during the last '+iterations+' steps'
+        for atoms in info[-int(iterations):,:,0:3]:
+            p.write("%s\n" % str(num_atoms))
+            p.write("%s\n" % comment)
+            for atom in atoms:
+                p.write(part_type)
+                p.write("\t%s\n" % str(atom)[1:-2])
 
+        #writing other file
+        other_dict={}
+        other_dict['KE']=KE.reshape(KE.shape[0],)
+        other_dict['PE']=PE.reshape(PE.shape[0],)
+        other_dict['T_insta']=T_insta.reshape(T_insta.shape[0],)
+        other_dict['P_insta']=P_insta.reshape(P_insta.shape[0],)
+        other_df=pd.DataFrame.from_dict(other_dict)
+        other_df.to_csv(path_to_file_other,index_label='step')
+
+        #writing summary file
+        s.write("Simulation Cell Size(unitless): "+str(L)+"\n")
+        s.write("Simulation Particles Amount: "+str(num_atoms)+"\n")
+        s.write("File Name: "+str(name)+"\n")
+        s.write("Simulation Time: "+ str(period)+"\n")
+        s.write("Simulation Step: "+str(stop_step)+"\n")
+        s.write("Force Cut-off: "+str(r_c)+"\n")
+        p.close()
+        s.close()

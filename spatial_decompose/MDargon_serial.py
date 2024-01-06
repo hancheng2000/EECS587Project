@@ -115,7 +115,7 @@ for step in range(stop_step):
     #UPDATE CUBES MAKE SURE ATOMS ARE IN RIGHT CUBES
     # infotodic=ut.cell_to_obj(info[step+1,:,:],subdiv[0],subdiv[1],subdiv[2],L0)
     
-    #calculate and store PE, KE, T_insta, P_insta in parallel
+    #calculate and store PE, KE, T_insta, P_insta
     PE[step+1,:]=ut.LJ_potent_nondimen(info[step+1,:,0:3],r_cut=r_c,L=L0)
     KE[step+1,:]=ut.Kin_Eng(info[step+1,:,3:6])
     T_insta[step+1,:]=2*KE[step+1,:]*energy_scale/(3*(size_sim-1)*k_B) #k

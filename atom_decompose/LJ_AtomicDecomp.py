@@ -1,6 +1,6 @@
 from mpi4py import MPI
 import numpy as np
-import utils_spatial_decompose as ut
+import utils_atomic_decompose as ut
 import utils_parallel as utp
 def LJ_MD(subdiv,position_init,dt,stop_step,accel_init,r_cut,L,T_eq,e_scale,sig, comm):
     rank = comm.Get_rank()
